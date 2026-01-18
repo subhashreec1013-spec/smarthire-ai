@@ -1,30 +1,82 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template_string
 import os
 import google.generativeai as genai
 
+# Configure Gemini API
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "SmartHire AI Demo API is running"
+HTML_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartHire AI</title>
+    <style>
+        body { font-family: Arial; background:#f4f6f8; padding:40px; }
+        textarea { width:100%; height:120px; margin-top:10px; }
+        button { padding:10px 20px; margin-top:15px; background:#007bff; color:white; border:none; }
+        .box { background:white; padding:25px; border-radius:8px; max-width:800px; margin:auto; }
+        pre { background:#eee; padding:15px; }
+    </style>
+</head>
+<body>
+<div class="box">
+<h2>SmartHire AI – Resume Screening</h2>
 
-@app.route("/analyze", methods=["POST"])
-def analyze_resume():
-    data = request.json
+<form method="post">
+<label>Resume Text:</label>
+<textarea name="resume" required></textarea>
 
-    resume_text = data.get("resume", "")
-    job_desc = data.get("job_description", "")
+<label>Job Description:</label>
+<textarea name="job" required></textarea>
 
-    resume_words = set(resume_text.lower().split())
-    job_words = set(job_desc.lower().split())
+<button type="submit">Analyze</button>
+</form>
 
-    matched = resume_words.intersection(job_words)
-    score = int((len(matched) / max(len(job_words), 1)) * 100)
+{% if result %}
+<h3>AI Result:</h3>
+<pre>{{ result }}</pre>
+{% endif %}
+</div>
+</body>
+</html>
+"""
 
-    return jsonify({
-        "match_score": score,
-        "matched_skills": list(matched),
-        "missing_skills": list(job_words - matched),
-        "explanation": "Demo response. AI integration will be added during hackathon."
-    })
-   True)
+@app.route("/", methods=["GET", "POST"])
+def index():
+    result = None
+
+    if request.method == "POST":
+        resume = request.form["resume"]
+        job = request.form["job"]
+
+        prompt = f"""
+You are an AI recruitment assistant.
+
+Compare this resume with the job description.
+Give:
+1. Match percentage
+2. Missing skills
+3. Strengths
+4. Final hiring recommendation
+
+Resume:
+{resume}
+
+Job Description:
+{job}
+"""
+
+        try:
+            model = genai.GenerativeModel("gemini-pro")
+            response = model.generate_content(prompt)
+            result = response.text
+        except Exception as e:
+            result = f"Error: {str(e)}"
+
+    return render_template_string(HTML_PAGE, result=result)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
