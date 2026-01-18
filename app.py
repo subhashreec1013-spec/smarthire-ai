@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template
+import os
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -25,8 +27,4 @@ def analyze_resume():
         "missing_skills": list(job_words - matched),
         "explanation": "Demo response. AI integration will be added during hackathon."
     })
-    import os
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-if __name__ == "__main__":
-    app.run(debug=True)
+   True)
